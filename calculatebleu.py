@@ -56,13 +56,51 @@ def clean_text(text):
     return text
 # End of clean text
 #==========================================================#
-
-#============================================================#
-def computeGram1(line):
-    freq = dict()
+def getBigram(words):
+    temp = list()
+    for i in range(len(words) - 1):
+        temp.append(words[i] + u' ' + words[i+1])
+    return temp
+#=======================================================================#
+def getTrigram(words):
+    temp = list()
+    for i in range(len(words) - 2):
+        temp.append(words[i] + u' ' + words[i + 1] + u' ' + words[i + 2])
+    return temp
+#=======================================================================#
+def getQuadgram(words):
+    temp = list()
+    for i in range(len(words) - 3):
+        temp.append(words[i] + u' ' + words[i + 1] + u' ' + words[i + 2] + u' ' + words[i + 3])
+    return temp
+#=======================================================================#
+def getFreq(freq, unique, line, ref):
+    for word in unique:
+        match = min(line.count(word), ref.count(word))
+        if not word in freq:
+            freq[word] = match
+        elif freq[word] < match:
+            freq[word] = match
+    return freq
+#=============================================================#
+def computeGram(line):
+    freq, freq2, freq3, freq4 = dict(), dict(), dict(), dict()
+    # For UNIGRAM
     line = line.split()
-    denominator = len(line)
     unique = list(set(line))
+    denominator = len(line)
+    # For BIGRAM
+    line2= getBigram(line)
+    denominator2 = len(line2)
+    unique2 = list(set(line2))
+    # For TRIGRAM
+    line3= getTrigram(line)
+    denominator3 = len(line3)
+    unique3 = list(set(line3))
+    # For QUADGRAM
+    line4 = getQuadgram(line)
+    denominator4 = len(line4)
+    unique4 = list(set(line4))
     #========================================================#
     for doc in docs:
         ref = reference[doc].readline()
@@ -70,15 +108,26 @@ def computeGram1(line):
         ref = clean_text(ref)
         ref = ref.split()
         #====================================================#
-        for word in unique:
-            match = min(line.count(word), ref.count(word))
-            if not word in freq:
-                freq[word] = match
-            elif freq[word] < match:
-                freq[word] = match
+        # UNIGRAM
+        getFreq(freq, unique, line, ref)
+        p1 = float(sum(freq.values()))/denominator
         #====================================================#
+        # BI-GRAM
+        ref2 = getBigram(ref)
+        getFreq(freq2, unique2, line2, ref2)
+        p2 = float(sum(freq2.values()))/denominator2
+        #====================================================#
+        # TRI-GRAM
+        ref3 = getTrigram(ref)
+        getFreq(freq3, unique3, line3, ref3)
+        p3 = float(sum(freq3.values()))/denominator3
+        #====================================================#
+        # QUAD-GRAM
+        ref4 = getQuadgram(ref)
+        getFreq(freq4, unique4, line4, ref4)
+        p4 = float(sum(freq4.values()))/denominator4
     #========================================================#
-    return float(sum(freq.values()))/denominator
+    return p1, p2, p3, p4
 #============================================================#
 
 weight = 0.25
@@ -86,8 +135,8 @@ weight = 0.25
 for line in candidateHand:
     line = line.strip().decode('utf-8', 'ignore')
     line = clean_text(line)
-    p1   = computeGram1(line)
-    break
+    p1, p2, p3, p4   = computeGram(line)
+    print p1, p2, p3, p4
 #==========================================================#
 outFile.close()
 candidateHand.close()
