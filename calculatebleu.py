@@ -55,21 +55,38 @@ def clean_text(text):
     text=text.replace(u"  ",' ')
     return text
 # End of clean text
+#==========================================================#
 
+#============================================================#
 def computeGram1(line):
-    print line
+    freq = dict()
+    line = line.split()
+    denominator = len(line)
+    unique = list(set(line))
+    #========================================================#
     for doc in docs:
         ref = reference[doc].readline()
         ref = ref.strip().decode('utf-8', 'ignore')
         ref = clean_text(ref)
-        print ref
+        ref = ref.split()
+        #====================================================#
+        for word in unique:
+            match = min(line.count(word), ref.count(word))
+            if not word in freq:
+                freq[word] = match
+            elif freq[word] < match:
+                freq[word] = match
+        #====================================================#
+    #========================================================#
+    return float(sum(freq.values()))/denominator
+#============================================================#
 
 weight = 0.25
 # Processing Step
 for line in candidateHand:
     line = line.strip().decode('utf-8', 'ignore')
     line = clean_text(line)
-    computeGram1(line)
+    p1   = computeGram1(line)
     break
 #==========================================================#
 outFile.close()
