@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import os
 import sys
-import string
+import math
 import glob
 
 if len(sys.argv) != 3:
@@ -31,30 +31,6 @@ else:
 reference = dict()
 for doc in docs:
     reference[doc] = open(doc, 'r')
-#==========================================================#
-# Beginning of clean_text
-def clean_text(text):
-    ''' Doing what string.translate should do '''  
-    text=text.replace(u"।", '')
-    text=text.replace(u'\\','')
-    text=text.replace(u'!','')
-    text=text.replace(u'@','')
-    text=text.replace(u',','')
-    text=text.replace(u'"','')
-    text=text.replace(u'(','')
-    text=text.replace(u')','')
-    text=text.replace(u'"','')
-    text=text.replace(u"'",'')
-    text=text.replace(u"‘‘",'')
-    text=text.replace(u"’’",'')
-    text=text.replace(u"''",'')
-    text=text.replace(u".",'')
-    text=text.replace(u":",'')
-    text=text.replace(u"-",'')
-    text=text.replace(u"?",'')
-    text=text.replace(u"  ",' ')
-    return text
-# End of clean text
 #==========================================================#
 def getBigram(words):
     temp = list()
@@ -86,9 +62,11 @@ def getFreq(freq, unique, line, ref):
 def computeGram(line):
     freq, freq2, freq3, freq4 = dict(), dict(), dict(), dict()
     # For UNIGRAM
+    line = line.lower()
     line = line.split()
     unique = list(set(line))
     denominator = len(line)
+    C_EXP[0] = C_EXP[0] + denominator
     # For BIGRAM
     line2= getBigram(line)
     denominator2 = len(line2)
@@ -102,41 +80,97 @@ def computeGram(line):
     denominator4 = len(line4)
     unique4 = list(set(line4))
     #========================================================#
+    i = 1
     for doc in docs:
         ref = reference[doc].readline()
         ref = ref.strip().decode('utf-8', 'ignore')
-        ref = clean_text(ref)
+        ref = ref.lower()
         ref = ref.split()
+        R_EXP[i] += len(ref)
+        i  += 1
         #====================================================#
         # UNIGRAM
         getFreq(freq, unique, line, ref)
-        p1 = float(sum(freq.values()))/denominator
+        n1 = sum(freq.values())
+        d1 = denominator
         #====================================================#
         # BI-GRAM
         ref2 = getBigram(ref)
         getFreq(freq2, unique2, line2, ref2)
-        p2 = float(sum(freq2.values()))/denominator2
+        n2 = sum(freq2.values())
+        d2 = denominator2
         #====================================================#
         # TRI-GRAM
         ref3 = getTrigram(ref)
         getFreq(freq3, unique3, line3, ref3)
-        p3 = float(sum(freq3.values()))/denominator3
+        n3 = sum(freq3.values())
+        d3 = denominator3
         #====================================================#
         # QUAD-GRAM
         ref4 = getQuadgram(ref)
         getFreq(freq4, unique4, line4, ref4)
-        p4 = float(sum(freq4.values()))/denominator4
+        n4 = sum(freq4.values())
+        d4 = denominator4
     #========================================================#
-    return p1, p2, p3, p4
+    return n1, d1, n2, d2, n3, d3, n4, d4
 #============================================================#
 
+#=============================================================================#
+R_EXP = dict()
+C_EXP = [0]
+for i in range(len(docs)):
+    R_EXP[i+1] = 0
 weight = 0.25
+a, b, c, d = 0, 0, 0, 0
+p, q, r, s = 0, 0, 0, 0
 # Processing Step
+#========================================================#
 for line in candidateHand:
     line = line.strip().decode('utf-8', 'ignore')
-    line = clean_text(line)
-    p1, p2, p3, p4   = computeGram(line)
-    print p1, p2, p3, p4
+    n1, d1, n2, d2, n3, d3, n4, d4 = computeGram(line)
+    a, b, c, d = a + n1, b + n2, c + n3, d + n4
+    p, q, r, s = p + d1, q + d2, r + d3, s + d4
+#========================================================#
+p1 = float(a)/p
+p2 = float(b)/q
+p3 = float(c)/r
+p4 = float(d)/s
+p = 0
+try:
+    p = math.log(p1)
+except:
+    pass
+try:
+    p += math.log(p2)
+except:
+    pass
+try:
+    p += math.log(p3)
+except:
+    pass
+try:
+    p += math.log(p4)
+except:
+    pass
+p = weight * p
+
+#========================================================#
+R = None
+DIFF = None
+for key in R_EXP:
+    # Finding Closer value to C
+    if not DIFF or abs(R_EXP[key] - C_EXP[0]) < DIFF:
+        DIFF = abs(R_EXP[key] - C_EXP[0])
+        R = R_EXP[key]
+
+if C_EXP[0] > R:
+    BP = 1.0
+else:
+    BP = math.exp(1 - float(R)/C_EXP[0])
+
+BLEU = BP * math.exp(p)
+outFile.write(str(BLEU))
+outFile.write('\n')
 #==========================================================#
 outFile.close()
 candidateHand.close()
