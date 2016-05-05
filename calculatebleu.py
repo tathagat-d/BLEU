@@ -59,14 +59,14 @@ def getFreq(freq, unique, line, ref):
             freq[word] = match
     return freq
 #=============================================================#
-def computeGram(line):
+def computeGram(line, counter):
     freq, freq2, freq3, freq4 = dict(), dict(), dict(), dict()
     # For UNIGRAM
     line = line.lower()
     line = line.split()
     unique = list(set(line))
     denominator = len(line)
-    C_EXP[0] = C_EXP[0] + denominator
+    C_EXP.append(denominator)
     # For BIGRAM
     line2= getBigram(line)
     denominator2 = len(line2)
@@ -86,7 +86,10 @@ def computeGram(line):
         ref = ref.strip().decode('utf-8', 'ignore')
         ref = ref.lower()
         ref = ref.split()
-        R_EXP[i] += len(ref)
+        if not i in R_EXP:
+            R_EXP[i] = {counter : len(ref)}
+        else:
+            R_EXP[i][counter] = len(ref)
         i  += 1
         #====================================================#
         # UNIGRAM
@@ -117,17 +120,17 @@ def computeGram(line):
 
 #=============================================================================#
 R_EXP = dict()
-C_EXP = [0]
-for i in range(len(docs)):
-    R_EXP[i+1] = 0
+C_EXP = list()
 weight = 0.25
 a, b, c, d = 0, 0, 0, 0
 p, q, r, s = 0, 0, 0, 0
 # Processing Step
 #========================================================#
+counter = 0
 for line in candidateHand:
+    counter += 1
     line = line.strip().decode('utf-8', 'ignore')
-    n1, d1, n2, d2, n3, d3, n4, d4 = computeGram(line)
+    n1, d1, n2, d2, n3, d3, n4, d4 = computeGram(line, counter)
     a, b, c, d = a + n1, b + n2, c + n3, d + n4
     p, q, r, s = p + d1, q + d2, r + d3, s + d4
 #========================================================#
@@ -155,19 +158,23 @@ except:
 p = weight * p
 
 #========================================================#
-R = None
-DIFF = None
-for key in R_EXP:
-    # Finding Closer value to C
-    if not DIFF or abs(R_EXP[key] - C_EXP[0]) < DIFF:
-        DIFF = abs(R_EXP[key] - C_EXP[0])
-        R = R_EXP[key]
+R = 0
+for index in range(len(C_EXP)):
+    temp = None
+    DIFF = None
+    for key in R_EXP:
+        if not DIFF or abs(R_EXP[key][index + 1] - C_EXP[index]) < DIFF:
+            DIFF = abs(R_EXP[key][index + 1] - C_EXP[index])
+            temp = R_EXP[key][index + 1]
+    # Added closest value for each sentence
+    R += temp
 
-if C_EXP[0] > R:
+#========================================================#
+C_EXP = sum(C_EXP)
+if C_EXP > R:
     BP = 1.0
 else:
-    BP = math.exp(1 - float(R)/C_EXP[0])
-
+    BP = math.exp(1 - float(R)/C_EXP)
 BLEU = BP * math.exp(p)
 outFile.write(str(BLEU))
 outFile.write('\n')
